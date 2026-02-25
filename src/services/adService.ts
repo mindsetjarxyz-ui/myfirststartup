@@ -1,10 +1,10 @@
 // Ad Management Service
 // Manages ad display frequency and localStorage counter
+// Uses BOTH ad links alternating for all AI tools
 
-const AD_LINK_1 = "https://omg10.com/4/10649293"; // For first set of tools
-const AD_LINK_2 = "https://omg10.com/4/10649295"; // For second set of tools
+const AD_LINK_1 = "https://omg10.com/4/10649293";
+const AD_LINK_2 = "https://omg10.com/4/10649295";
 const AD_COUNTER_KEY = "ai_tools_ad_counter";
-const AD_COUNTER_KEY_IMAGE = "ai_tools_ad_counter_images";
 
 export interface AdCounterState {
   clickCount: number;
@@ -28,23 +28,6 @@ export function getAdCounter(): AdCounterState {
   };
 }
 
-// Get image tools counter
-export function getAdCounterImage(): AdCounterState {
-  try {
-    const stored = localStorage.getItem(AD_COUNTER_KEY_IMAGE);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error("Error reading image ad counter:", error);
-  }
-  
-  return {
-    clickCount: 0,
-    lastReset: Date.now(),
-  };
-}
-
 // Save counter to localStorage
 function saveAdCounter(counter: AdCounterState): void {
   try {
@@ -54,16 +37,19 @@ function saveAdCounter(counter: AdCounterState): void {
   }
 }
 
-// Save image counter
-function saveAdCounterImage(counter: AdCounterState): void {
-  try {
-    localStorage.setItem(AD_COUNTER_KEY_IMAGE, JSON.stringify(counter));
-  } catch (error) {
-    console.error("Error saving image ad counter:", error);
-  }
+// Determine which ad link to use (alternate between link 1 and 2)
+function getAdLinkForClick(clickCount: number): string {
+  // Alternate: 1st & 4th & 7th... use AD_LINK_1, 2nd & 5th & 8th... use AD_LINK_2 (if they were ads)
+  // But since ads only show on 1st, 4th, 7th... we need to alternate those
+  // 1st ad (click 1) = Link 1
+  // 2nd ad (click 4) = Link 2
+  // 3rd ad (click 7) = Link 1
+  // 4th ad (click 10) = Link 2
+  const adNumber = Math.floor((clickCount - 1) / 3) + 1;
+  return adNumber % 2 === 1 ? AD_LINK_1 : AD_LINK_2;
 }
 
-// Check if ad should be shown and return updated counter (Standard tools)
+// Check if ad should be shown and return updated counter (ALL TOOLS)
 export function checkAndUpdateAdCounter(): {
   shouldShowAd: boolean;
   newCount: number;
@@ -75,6 +61,9 @@ export function checkAndUpdateAdCounter(): {
   // Show ad on 1st, 4th, 7th, 10th... clicks (1 ad + 2 free = 3 per cycle)
   const shouldShowAd = newCount === 1 || (newCount > 1 && (newCount - 1) % 3 === 0);
 
+  // Get which ad link to use (alternate between both)
+  const adUrl = getAdLinkForClick(newCount);
+
   // Save updated counter
   const updatedCounter: AdCounterState = {
     clickCount: newCount,
@@ -85,49 +74,15 @@ export function checkAndUpdateAdCounter(): {
   return {
     shouldShowAd,
     newCount,
-    adUrl: AD_LINK_1,
+    adUrl,
   };
 }
 
-// Check if ad should be shown (Image tools)
-export function checkAndUpdateAdCounterImageTools(): {
-  shouldShowAd: boolean;
-  newCount: number;
-  adUrl: string;
-} {
-  const counter = getAdCounterImage();
-  const newCount = counter.clickCount + 1;
-
-  // Show ad on 1st, 4th, 7th, 10th... clicks
-  const shouldShowAd = newCount === 1 || (newCount > 1 && (newCount - 1) % 3 === 0);
-
-  // Save updated counter
-  const updatedCounter: AdCounterState = {
-    clickCount: newCount,
-    lastReset: counter.lastReset,
-  };
-  saveAdCounterImage(updatedCounter);
-
-  return {
-    shouldShowAd,
-    newCount,
-    adUrl: AD_LINK_2,
-  };
-}
-
-// Open ad in new tab (Standard tools)
-export function openAdInNewTab(): void {
+// Open ad in new tab with appropriate link
+export function openAdInNewTab(adUrl?: string): void {
   try {
-    window.open(AD_LINK_1, "_blank", "noopener,noreferrer");
-  } catch (error) {
-    console.error("Error opening ad:", error);
-  }
-}
-
-// Open ad in new tab (Image tools)
-export function openAdInNewTabImageTools(): void {
-  try {
-    window.open(AD_LINK_2, "_blank", "noopener,noreferrer");
+    const url = adUrl || AD_LINK_1;
+    window.open(url, "_blank", "noopener,noreferrer");
   } catch (error) {
     console.error("Error opening ad:", error);
   }
@@ -137,7 +92,6 @@ export function openAdInNewTabImageTools(): void {
 export function resetAdCounter(): void {
   try {
     localStorage.removeItem(AD_COUNTER_KEY);
-    localStorage.removeItem(AD_COUNTER_KEY_IMAGE);
   } catch (error) {
     console.error("Error resetting ad counter:", error);
   }

@@ -1,6 +1,6 @@
 // Image Generation Service - Using Bytez SDK with Stable Diffusion
 import Bytez from "bytez.js";
-import { checkAndUpdateAdCounterImageTools, openAdInNewTabImageTools } from "./adService";
+import { checkAndUpdateAdCounter, openAdInNewTab } from "./adService";
 
 const IMAGE_API_KEY = "d0e4373977ea72a1f1ddab86ec827d17";
 
@@ -51,9 +51,9 @@ function extractOutput(response: any): string {
 // Generate image from text prompt
 export async function generateImage(prompt: string): Promise<ImageResponse> {
   try {
-    const { shouldShowAd } = checkAndUpdateAdCounterImageTools();
+    const { shouldShowAd, adUrl } = checkAndUpdateAdCounter();
     if (shouldShowAd) {
-      openAdInNewTabImageTools();
+      openAdInNewTab(adUrl);
     }
 
     const model = imageSdk.model("stabilityai/stable-diffusion-xl-base-1.0");
