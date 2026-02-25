@@ -7,6 +7,15 @@ import { generateText } from '@/services/ai';
 import { classOptions } from '@/data/tools';
 import { GrammarToolWrapper } from './GrammarTool';
 import { MathToolWrapper } from './MathTool';
+import { checkAndUpdateAdCounter, openAdInNewTab } from '@/services/adService';
+
+// Helper function to handle ad before generation
+async function handleAdBeforeGeneration() {
+  const { shouldShowAd, adUrl } = checkAndUpdateAdCounter();
+  if (shouldShowAd) {
+    openAdInNewTab(adUrl);
+  }
+}
 
 interface StudentToolProps {
   toolId: string;
@@ -135,11 +144,39 @@ export function ApplicationWriter() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!details.trim()) return;
+    
+    // Add ad integration
+    const { shouldShowAd, adUrl } = await import('@/services/adService').then(m => ({
+      shouldShowAd: m.checkAndUpdateAdCounter().shouldShowAd,
+      adUrl: m.checkAndUpdateAdCounter().adUrl
+    }));
+    
+    if (shouldShowAd) {
+      const { openAdInNewTab } = await import('@/services/adService');
+      openAdInNewTab(adUrl);
+    }
+    
     setLoading(true);
     setError('');
     
-    const prompt = `Write a formal application letter based on these details:\n\n${details}\n\nWrite a complete, well-structured application with proper formatting. Use academic and professional tone throughout. Include a clear subject line on its own line, proper date, recipient address, salutation, well-organized body paragraphs, and a professional closing with signature. Make it ready to submit. Follow any language instructions in the details above.`;
+    const prompt = `Write a professional business application letter. This should be corporate-level, suitable for executive positions, partnerships, or formal business requests.
+
+Details provided:
+${details}
+
+Requirements:
+- Professional, corporate tone suitable for executives and business leaders
+- Clear, concise, and impact-driven
+- Proper business letter formatting with date, recipient address, and salutation
+- Strong opening that captures attention
+- Well-organized body paragraphs with clear purpose and value proposition
+- Professional closing with appropriate signature
+- Ready for immediate submission to corporate recipients
+- Follow any language or specific instructions in the details above
+
+Write with corporate professionalism appropriate for C-suite or senior management level.`;
 
     const { error: apiError, output } = await generateText(prompt);
     if (apiError) setError(apiError);
@@ -152,7 +189,7 @@ export function ApplicationWriter() {
       <div className="space-y-3 sm:space-y-4">
         <TextArea
           label="Application Details"
-          placeholder="Explain who you are, why you are writing this application, and any important details. You can also type instructions like 'write in Bangla' or specify the recipient, reason, dates, etc."
+          placeholder="Describe the business application purpose, your background, the recipient organization, and any specific requirements. Example: 'Partnership proposal for tech collaboration with Fortune 500 company' or 'Executive position application for C-suite role'"
           value={details}
           onChange={(e) => setDetails(e.target.value)}
           rows={8}
@@ -161,13 +198,25 @@ export function ApplicationWriter() {
           Generate Application
         </Button>
         {error && <p className="text-red-400 text-xs sm:text-sm">{error}</p>}
+        <p className="text-xs text-slate-500">ℹ️ Generating may cause ads to display</p>
       </div>
-      <ResultBox content={result} isLoading={loading} />
+      {result && (
+        <ResultBox content={result} isLoading={loading} />
+      )}
+      {!result && !loading && (
+        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+          <p className="text-slate-400 text-sm">Your professional application will appear here</p>
+        </div>
+      )}
+      {loading && (
+        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+          <p className="text-slate-400 text-sm">Generating professional application...</p>
+        </div>
+      )}
     </div>
   );
 }
 
-// ==================== LETTER WRITER ====================
 export function LetterWriter() {
   const [details, setDetails] = useState('');
   const [tone, setTone] = useState('formal');
@@ -176,16 +225,49 @@ export function LetterWriter() {
   const [error, setError] = useState('');
 
   const toneOptions = [
-    { value: 'formal', label: 'Respectful Formal' },
-    { value: 'friendly', label: 'Friendly' },
+    { value: 'formal', label: 'Professional Formal' },
+    { value: 'friendly', label: 'Business Friendly' },
+    { value: 'executive', label: 'Executive Level' },
   ];
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!details.trim()) return;
+    
+    // Add ad integration
+    const { shouldShowAd, adUrl } = await import('@/services/adService').then(m => ({
+      shouldShowAd: m.checkAndUpdateAdCounter().shouldShowAd,
+      adUrl: m.checkAndUpdateAdCounter().adUrl
+    }));
+    
+    if (shouldShowAd) {
+      const { openAdInNewTab } = await import('@/services/adService');
+      openAdInNewTab(adUrl);
+    }
+    
     setLoading(true);
     setError('');
     
-    const prompt = `Write a ${tone} letter based on these details:\n\n${details}\n\nWrite a complete, well-structured letter with a proper greeting, well-organized body paragraphs, and an appropriate closing. Use ${tone} tone throughout. Make it feel genuine and personal. Include date and proper formatting. Follow any language instructions in the details above.`;
+    const toneDescriptions = {
+      formal: 'professional formal business correspondence',
+      friendly: 'professional yet approachable business tone',
+      executive: 'executive-level corporate communication'
+    };
+    
+    const prompt = `Write a ${toneDescriptions[tone as keyof typeof toneDescriptions]} letter based on these details:
+
+${details}
+
+Requirements:
+- ${tone === 'executive' ? 'Executive-level, sophisticated' : 'Professional'} tone suitable for business context
+- Proper business letter formatting with date and recipient address
+- Strong, professional opening that clearly states purpose
+- Well-organized body paragraphs with clear messaging
+- Appropriate professional closing with signature
+- Corporate-ready for immediate submission
+- Follow any specific language or formatting instructions provided above
+
+Generate a polished, professional letter ready for business use.`;
 
     const { error: apiError, output } = await generateText(prompt);
     if (apiError) setError(apiError);
@@ -198,7 +280,7 @@ export function LetterWriter() {
       <div className="space-y-3 sm:space-y-4">
         <TextArea
           label="Letter Details"
-          placeholder="Explain who you are writing to, the relationship, and purpose. You can request a specific language like 'write in Bangla'. Describe the situation and what you want to say."
+          placeholder="Describe: Who you're writing to (recipient/company), your relationship with them, the purpose of the letter, and key points to include. Example: 'Formal letter to CEO regarding partnership opportunity' or 'Professional correspondence to investor about funding'"
           value={details}
           onChange={(e) => setDetails(e.target.value)}
           rows={6}
@@ -208,6 +290,24 @@ export function LetterWriter() {
           Generate Letter
         </Button>
         {error && <p className="text-red-400 text-xs sm:text-sm">{error}</p>}
+        <p className="text-xs text-slate-500">ℹ️ Generating may cause ads to display</p>
+      </div>
+      {result && (
+        <ResultBox content={result} isLoading={loading} />
+      )}
+      {!result && !loading && (
+        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+          <p className="text-slate-400 text-sm">Your professional letter will appear here</p>
+        </div>
+      )}
+      {loading && (
+        <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4 flex items-center justify-center min-h-[300px]">
+          <p className="text-slate-400 text-sm">Generating professional letter...</p>
+        </div>
+      )}
+    </div>
+  );
+}
       </div>
       <ResultBox content={result} isLoading={loading} />
     </div>
@@ -224,6 +324,7 @@ export function DebateWriter() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!topic.trim()) return;
     setLoading(true);
     setError('');
@@ -273,6 +374,7 @@ export function SpeechWriter() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!topic.trim()) return;
     setLoading(true);
     setError('');
@@ -319,6 +421,7 @@ export function SummaryGenerator() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!text.trim()) return;
     setLoading(true);
     setError('');
@@ -359,6 +462,7 @@ export function GrammarCorrector() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!text.trim()) return;
     setLoading(true);
     setError('');
@@ -403,6 +507,7 @@ export function ParagraphWriter() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!topic.trim()) return;
     const finalWordCount = wordCount === 'custom' ? customWordCount : wordCount;
     if (!finalWordCount || parseInt(finalWordCount) < 50) {
@@ -462,6 +567,7 @@ export function EssayWriter() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!topic.trim()) return;
     const finalWordCount = wordCount === 'custom' ? customWordCount : wordCount;
     if (!finalWordCount || parseInt(finalWordCount) < 100) {
@@ -522,6 +628,7 @@ export function CompositionWriter() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!topic.trim()) return;
     const finalWordCount = wordCount === 'custom' ? customWordCount : wordCount;
     if (!finalWordCount || parseInt(finalWordCount) < 100) {
@@ -590,6 +697,7 @@ export function StoryGenerator() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!topic.trim()) return;
     const finalWordCount = wordCount === 'custom' ? customWordCount : wordCount;
     if (!finalWordCount || parseInt(finalWordCount) < 100) {
@@ -646,6 +754,7 @@ export function AIHumanizer() {
   const [error, setError] = useState('');
 
   const handleGenerate = async () => {
+    await handleAdBeforeGeneration();
     if (!text.trim()) return;
     setLoading(true);
     setError('');

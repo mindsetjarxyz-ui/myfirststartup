@@ -1,6 +1,5 @@
 // Ad Management Service
-// Manages ad display frequency and localStorage counter
-// Uses BOTH ad links alternating for all AI tools
+// Pattern: Click Generate → Ad shows → Come back → 1 free generation → Next click shows ad → Repeat
 
 const AD_LINK_1 = "https://omg10.com/4/10649293";
 const AD_LINK_2 = "https://omg10.com/4/10649295";
@@ -39,17 +38,15 @@ function saveAdCounter(counter: AdCounterState): void {
 
 // Determine which ad link to use (alternate between link 1 and 2)
 function getAdLinkForClick(clickCount: number): string {
-  // Alternate: 1st & 4th & 7th... use AD_LINK_1, 2nd & 5th & 8th... use AD_LINK_2 (if they were ads)
-  // But since ads only show on 1st, 4th, 7th... we need to alternate those
-  // 1st ad (click 1) = Link 1
-  // 2nd ad (click 4) = Link 2
-  // 3rd ad (click 7) = Link 1
-  // 4th ad (click 10) = Link 2
-  const adNumber = Math.floor((clickCount - 1) / 3) + 1;
+  // Pattern: Ad on click 1, 3, 5, 7, 9... (odd clicks)
+  // Link 1 on 1st, 5th, 9th... ads
+  // Link 2 on 3rd, 7th, 11th... ads
+  const adNumber = Math.floor((clickCount + 1) / 2);
   return adNumber % 2 === 1 ? AD_LINK_1 : AD_LINK_2;
 }
 
-// Check if ad should be shown and return updated counter (ALL TOOLS)
+// Check if ad should be shown and return updated counter
+// Pattern: Ad shows on every odd click (1st, 3rd, 5th, 7th...)
 export function checkAndUpdateAdCounter(): {
   shouldShowAd: boolean;
   newCount: number;
@@ -58,10 +55,10 @@ export function checkAndUpdateAdCounter(): {
   const counter = getAdCounter();
   const newCount = counter.clickCount + 1;
 
-  // Show ad on 1st, 4th, 7th, 10th... clicks (1 ad + 2 free = 3 per cycle)
-  const shouldShowAd = newCount === 1 || (newCount > 1 && (newCount - 1) % 3 === 0);
+  // Show ad on odd clicks: 1, 3, 5, 7, 9... (Click → Ad → 1 Free → Click → Ad → 1 Free...)
+  const shouldShowAd = newCount % 2 === 1;
 
-  // Get which ad link to use (alternate between both)
+  // Get which ad link to use
   const adUrl = getAdLinkForClick(newCount);
 
   // Save updated counter
